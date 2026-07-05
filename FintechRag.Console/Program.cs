@@ -2,22 +2,8 @@
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using FintechRag.Console.Ingestion;
-
-// Phase 2 test: load the annual report
-var pdfPath = Path.Combine("data", "annual-report.pdf");
-var pages = DocumentLoader.LoadPdf(pdfPath);
-
-Console.WriteLine($"Loaded {pages.Count} pages.");
-Console.WriteLine($"--- Sample from page 1 ---");
-Console.WriteLine(pages[0].Text[..Math.Min(500, pages[0].Text.Length)]);
-Console.WriteLine("---------------------------\n");
-
-//TextChunker test: split the pages into chunks for RAG
-var chunks = TextChunker.ChunkPages(pages);
-Console.WriteLine($"Created {chunks.Count} chunks from {pages.Count} pages.");
-Console.WriteLine($"--- Sample chunk ({chunks[10].Id}) ---");
-Console.WriteLine(chunks[10].Text);
-Console.WriteLine("---------------------------\n");
+using FintechRag.Console.Embeddings;
+using System.Text.Json;
 
 
 
@@ -29,6 +15,44 @@ var config = new ConfigurationBuilder()
 var apiKey = config["Gemini:ApiKey"]
     ?? throw new InvalidOperationException(
         "API key missing. Run: dotnet user-secrets set \"Gemini:ApiKey\" \"your-key\"");
+        
+
+// Phase 2 test: load the annual report
+var pdfPath = Path.Combine("data", "annual-report.pdf");
+var pages = DocumentLoader.LoadPdf(pdfPath);
+
+Console.WriteLine($"Loaded {pages.Count} pages.");
+Console.WriteLine($"--- Sample from page 1 ---");
+Console.WriteLine(pages[0].Text[..Math.Min(500, pages[0].Text.Length)]);
+Console.WriteLine("---------------------------\n");
+
+//Phase 3A:TextChunker test: split the pages into chunks for RAG
+var chunks = TextChunker.ChunkPages(pages);
+Console.WriteLine($"Created {chunks.Count} chunks from {pages.Count} pages.");
+Console.WriteLine($"--- Sample chunk ({chunks[10].Id}) ---");
+Console.WriteLine(chunks[10].Text);
+Console.WriteLine("---------------------------\n");
+
+// Phase 3B: embed chunks (cached — only calls the API if no cache file exists)
+var embeddingsPath = Path.Combine("data", "embeddings.json");
+List<float[]> vectors;
+
+if (File.Exists(embeddingsPath))
+{
+    vectors = JsonSerializer.Deserialize<List<float[]>>(File.ReadAllText(embeddingsPath))!;
+    Console.WriteLine($"Loaded {vectors.Count} cached embeddings.");
+}
+else
+{
+    var embedder = new GeminiEmbeddingClient(apiKey);
+    vectors = await embedder.EmbedAsync(chunks.Select(c => c.Text).ToList());
+    File.WriteAllText(embeddingsPath, JsonSerializer.Serialize(vectors));
+    Console.WriteLine($"Embedded and cached {vectors.Count} vectors.");
+}
+
+Console.WriteLine($"Each vector has {vectors[0].Length} dimensions.");
+Console.WriteLine($"First 5 numbers of chunk 0's vector: [{string.Join(", ", vectors[0].Take(5))}]\n");
+
 
 // 2. Build the kernel — the central object Semantic Kernel routes everything through
 #pragma warning disable SKEXP0070 // Gemini connector is marked experimental
