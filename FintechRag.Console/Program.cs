@@ -1,6 +1,17 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using FintechRag.Console.Ingestion;
+
+// Phase 2 test: load the annual report
+var pdfPath = Path.Combine("data", "annual-report.pdf");
+var pages = DocumentLoader.LoadPdf(pdfPath);
+
+Console.WriteLine($"Loaded {pages.Count} pages.");
+Console.WriteLine($"--- Sample from page 1 ---");
+Console.WriteLine(pages[0].Text[..Math.Min(500, pages[0].Text.Length)]);
+Console.WriteLine("---------------------------\n");
+
 
 // 1. Load the API key from user secrets (never from code or the repo)
 var config = new ConfigurationBuilder()
