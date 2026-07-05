@@ -1,4 +1,5 @@
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace FintechRag.Console.Ingestion;
 
@@ -18,7 +19,7 @@ public static class DocumentLoader
         using var document = PdfDocument.Open(filePath);
         foreach (var page in document.GetPages())
         {
-            var text = page.Text;
+            var text = ContentOrderTextExtractor.GetText(page, addDoubleNewline: true);
             if (!string.IsNullOrWhiteSpace(text))
                 pages.Add(new DocumentPage(page.Number, text));
         }

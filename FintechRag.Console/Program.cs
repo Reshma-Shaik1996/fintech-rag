@@ -12,6 +12,14 @@ Console.WriteLine($"--- Sample from page 1 ---");
 Console.WriteLine(pages[0].Text[..Math.Min(500, pages[0].Text.Length)]);
 Console.WriteLine("---------------------------\n");
 
+//TextChunker test: split the pages into chunks for RAG
+var chunks = TextChunker.ChunkPages(pages);
+Console.WriteLine($"Created {chunks.Count} chunks from {pages.Count} pages.");
+Console.WriteLine($"--- Sample chunk ({chunks[10].Id}) ---");
+Console.WriteLine(chunks[10].Text);
+Console.WriteLine("---------------------------\n");
+
+
 
 // 1. Load the API key from user secrets (never from code or the repo)
 var config = new ConfigurationBuilder()
