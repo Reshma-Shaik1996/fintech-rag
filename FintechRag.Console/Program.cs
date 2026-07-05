@@ -4,7 +4,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using FintechRag.Console.Ingestion;
 using FintechRag.Console.Embeddings;
 using System.Text.Json;
-
+using FintechRag.Console.Retrieval;
 
 
 // 1. Load the API key from user secrets (never from code or the repo)
@@ -15,7 +15,7 @@ var config = new ConfigurationBuilder()
 var apiKey = config["Gemini:ApiKey"]
     ?? throw new InvalidOperationException(
         "API key missing. Run: dotnet user-secrets set \"Gemini:ApiKey\" \"your-key\"");
-        
+
 
 // Phase 2 test: load the annual report
 var pdfPath = Path.Combine("data", "annual-report.pdf");
@@ -54,6 +54,24 @@ Console.WriteLine($"Each vector has {vectors[0].Length} dimensions.");
 Console.WriteLine($"First 5 numbers of chunk 0's vector: [{string.Join(", ", vectors[0].Take(5))}]\n");
 
 
+// Phase 4: create a vector store for retrieval // test: semantic search
+var store = new VectorStore(chunks, vectors);
+var embedderForQueries = new GeminiEmbeddingClient(apiKey);
+
+var testQuery = "How much did the bank lose to bad loans?";
+Console.WriteLine($"Query: \"{testQuery}\"\n");
+
+var queryVector = (await embedderForQueries.EmbedAsync([testQuery]))[0];
+var results = store.Search(queryVector, topK: 3);
+
+foreach (var r in results)
+{
+    Console.WriteLine($"[{r.Chunk.Id}] score: {r.Score:F4} (page {r.Chunk.PageNumber})");
+    Console.WriteLine(r.Chunk.Text[..Math.Min(200, r.Chunk.Text.Length)] + "...\n");
+}
+
+
+//
 // 2. Build the kernel — the central object Semantic Kernel routes everything through
 #pragma warning disable SKEXP0070 // Gemini connector is marked experimental
 var kernel = Kernel.CreateBuilder()
@@ -80,8 +98,14 @@ while (true)
 
     history.AddUserMessage(input);
 
-    var response = await chat.GetChatMessageContentAsync(history, kernel: kernel);
-    Console.WriteLine($"\nAI: {response.Content}");
-
-    history.AddAssistantMessage(response.Content ?? string.Empty);
+    try
+    {
+        var response = await chat.GetChatMessageContentAsync(history, kernel: kernel);
+        Console.WriteLine($"\nAI: {response.Content}");
+        history.AddAssistantMessage(response.Content ?? string.Empty);
+    }
+    catch (Exception ex) when (ex.Message.Contains("503") || ex.Message.Contains("429"))
+    {
+        Console.WriteLine("\n[Gemini is briefly overloaded — wait a few seconds and ask again.]");
+}
 }
