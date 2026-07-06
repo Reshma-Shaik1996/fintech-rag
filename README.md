@@ -133,8 +133,7 @@ When the two retrieval methods completely disagree (each puts a different chunk 
 ### 5. Known limitation: granularity confusion (found via manual QA)
 Asked *"What were JPMorgan's credit losses in 2025?"*, the system answered **"$11.5 billion [p23-c2]"** — a valid citation of a true number... for the **consumer segment only**. The firmwide total is **$14.2 billion**. Retrieval surfaced a true-but-partial context; generation over-generalized it. A precision-forced query ("firmwide... full year 2025") returns the correct figure.
 
-This failure mode — *cited, plausible, wrong aggregation level* — is the most dangerous kind: it can't be caught by demos, only by systematic evaluation against questions with known answers. It is the direct motivation for **Project 2: an LLM evaluation harness** with a golden dataset, retrieval metrics (recall@k), and LLM-as-a-judge faithfulness scoring.
-
+This failure mode — *cited, plausible, wrong aggregation level* — is the most dangerous kind: it can't be caught by demos, only by systematic evaluation against questions with known answers.
 ---
 
 ## Project structure
@@ -184,16 +183,3 @@ dotnet run --project FintechRag.Console
 ```
 
 First run embeds ~377 chunks in rate-limited batches (a few minutes on the free tier); every run after that loads the cache and starts instantly.
-
----
-
-## Roadmap
-
-- [ ] **Evaluation harness** (companion project, in progress): golden Q&A dataset — including aggregation-sensitive questions targeting the granularity failure above — retrieval recall@k, faithfulness scoring via LLM-as-a-judge, CI regression gates
-- [ ] **Reranker + semantic chunking** — adopted only if evals show measurable retrieval gains over the current baseline
-- [ ] **Azure OpenAI provider swap** — the kernel is provider-agnostic by design; this is a config-level change, planned as a deliberate exercise in multi-provider architecture
-- [ ] Chunk metadata (section headers, segment tags) to attack granularity confusion at the retrieval layer
-
----
-
-*Built as Project 1 of a five-project AI engineering portfolio: RAG → evaluation harness → agentic workflows with MCP → production ops (cost/observability/guardrails) → fine-tuning.*
